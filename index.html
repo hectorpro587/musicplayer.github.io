@@ -4,7 +4,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MusicPlayer | Playlist & Visualizer</title>
+    <title>MusicPlayer | Reproductor de musica</title>
     <style>
         :root {
             --primary: #6366f1;
@@ -12,10 +12,11 @@
             --card: #1e293b;
             --text: #f8fafc;
             --accent: #38bdf8;
+            --glow: rgba(99, 102, 241, 0.5);
         }
 
         body {
-            font-family: 'Segoe UI', sans-serif;
+            font-family: 'Segoe UI', system-ui, sans-serif;
             background-color: var(--bg);
             color: var(--text);
             display: flex;
@@ -23,105 +24,158 @@
             align-items: center;
             min-height: 100vh;
             margin: 0;
-            padding: 20px;
+            transition: 0.5s ease;
         }
 
         .player-card {
             background: var(--card);
-            padding: 2rem;
-            border-radius: 20px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
-            width: 400px;
+            padding: 2.5rem;
+            border-radius: 24px;
+            box-shadow: 0 0 20px var(--glow), 0 10px 25px rgba(0,0,0,0.5);
+            width: 420px;
             display: flex;
             flex-direction: column;
             align-items: center;
+            position: relative;
+            border: 1px solid rgba(255,255,255,0.1);
         }
 
-        /* Visualizador */
-        #visualizer {
+        .lang-container { position: absolute; top: 20px; right: 20px; }
+        
+        #lang-select {
+            background: rgba(15, 23, 42, 0.8);
+            color: white;
+            border: 1px solid var(--primary);
+            padding: 5px 10px;
+            border-radius: 12px;
+            cursor: pointer;
+            outline: none;
+            font-size: 0.8rem;
+        }
+
+        .vis-wrapper {
             width: 100%;
-            height: 80px;
-            background-color: #0d121c;
-            border-radius: 8px;
-            margin: 15px 0;
+            height: 120px;
+            margin: 20px 0;
+            background: rgba(0,0,0,0.2);
+            border-radius: 12px;
+            overflow: hidden;
         }
 
-        /* Info de Canción */
-        .info { text-align: center; margin-bottom: 10px; }
-        #title { font-size: 1.1rem; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 300px; }
-        #artist { opacity: 0.6; font-size: 0.85rem; margin: 5px 0; }
+        #visualizer { width: 100%; height: 100%; display: block; }
 
-        /* Barra de Progreso */
+        .info { text-align: center; margin-bottom: 15px; min-height: 70px; width: 100%; }
+        #title { font-size: 1.2rem; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        #artist { opacity: 0.6; font-size: 0.9rem; margin: 8px 0; }
+
+        /* PROGRESO Y TIEMPO */
+        .progress-wrapper { width: 100%; margin-bottom: 25px; }
         .progress-container {
             background: #334155;
-            height: 6px;
+            height: 8px;
             width: 100%;
             border-radius: 10px;
-            margin: 15px 0;
             cursor: pointer;
+            position: relative;
+            margin-bottom: 8px;
         }
         .progress-bar {
             background: var(--primary);
             height: 100%;
             width: 0%;
             border-radius: 10px;
+            box-shadow: 0 0 12px var(--primary);
+            pointer-events: none;
+        }
+        .time-info {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.75rem;
+            color: var(--primary);
+            font-weight: bold;
+            text-shadow: 0 0 5px var(--glow);
         }
 
-        /* Controles */
-        .controls { display: flex; align-items: center; gap: 20px; }
+        .controls { display: flex; align-items: center; gap: 25px; }
         button {
             background: none; border: none; color: white;
-            cursor: pointer; font-size: 1.8rem; transition: 0.2s;
+            cursor: pointer; font-size: 2rem; transition: 0.3s;
         }
-        button:hover:not(:disabled) { color: var(--primary); transform: scale(1.1); }
-        button:disabled { opacity: 0.3; cursor: default; }
+        button:hover { color: var(--primary); transform: scale(1.1); }
+        
         #play-btn {
-            background: var(--primary); width: 60px; height: 60px;
+            background: var(--primary); width: 65px; height: 65px;
             border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 0 15px var(--primary);
         }
 
-        /* Lista de Reproducción */
         .playlist-container {
             width: 100%;
-            max-height: 150px;
+            max-height: 100px;
             overflow-y: auto;
             margin-top: 20px;
-            background: #0f172a;
-            border-radius: 10px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 12px;
             padding: 10px;
         }
         .playlist-item {
-            padding: 8px;
-            font-size: 0.85rem;
-            cursor: pointer;
-            border-bottom: 1px solid #1e293b;
-            display: flex;
-            justify-content: space-between;
+            padding: 8px; font-size: 0.8rem; cursor: pointer; border-radius: 6px; margin-bottom: 4px;
         }
-        .playlist-item:hover { background: #1e293b; }
-        .playlist-item.active { color: var(--accent); font-weight: bold; }
+        .playlist-item.active { 
+            background: rgba(255,255,255,0.05); color: var(--accent); border-left: 3px solid var(--primary);
+        }
 
-        /* Input */
         .file-input-wrapper { margin-top: 20px; }
-        input[type="file"] { display: none; }
         .custom-file-upload {
-            padding: 8px 18px; background: #334155;
-            border-radius: 20px; cursor: pointer; font-size: 0.8rem;
+            padding: 10px 20px; border: 1px solid var(--primary);
+            border-radius: 30px; cursor: pointer; font-size: 0.85rem;
+            display: flex; align-items: center; gap: 8px; transition: 0.3s;
         }
+        .custom-file-upload:hover { background: var(--primary); }
+        
+        .github-link {
+            margin-top: 20px;
+            color: #64748b;
+            font-size: 1.6rem;
+            transition: 0.3s;
+            text-decoration: none;
+        }
+        .github-link:hover { color: var(--primary); transform: rotate(10deg); }
+
+        input[type="file"] { display: none; }
     </style>
 </head>
 <body>
 
 <div class="player-card">
-    <div class="info">
-        <h2 id="title">Sin canciones</h2>
-        <p id="artist">Carga archivos para empezar</p>
+    <div class="lang-container">
+        <select id="lang-select">
+            <option value="es">Español</option>
+            <option value="en">English</option>
+            <option value="pt">Português</option>
+            <option value="fr">Français</option>
+            <option value="ko">한국어</option>
+            <option value="ja">日本語</option>
+        </select>
     </div>
 
-    <canvas id="visualizer"></canvas>
+    <div class="info">
+        <h2 id="title">---</h2>
+        <p id="artist">---</p>
+    </div>
 
-    <div class="progress-container" id="progress-container">
-        <div class="progress-bar" id="progress-bar"></div>
+    <div class="vis-wrapper">
+        <canvas id="visualizer"></canvas>
+    </div>
+
+    <div class="progress-wrapper">
+        <div class="progress-container" id="progress-outer">
+            <div class="progress-bar" id="progress-bar"></div>
+        </div>
+        <div class="time-info">
+            <span id="current-time">0:00</span>
+            <span id="duration">0:00</span>
+        </div>
     </div>
 
     <div class="controls">
@@ -130,140 +184,167 @@
         <button id="next-btn">⏭</button>
     </div>
 
-    <div class="playlist-container" id="playlist">
-        </div>
+    <div class="playlist-container" id="playlist"></div>
 
     <div class="file-input-wrapper">
         <label class="custom-file-upload">
             <input type="file" id="audio-upload" accept="audio/*" multiple>
-            Cargar Canciones (puedes elegir varias.) 📁
+            <span id="upload-text">Cargar</span> 📁
         </label>
     </div>
 
+    <a href="https://github.com/hectorpro587/musicplayer.github.io" class="github-link" target="_blank">
+        <i class="fa-brands fa-github"></i>
+    </a>
+    
     <audio id="audio-element" crossorigin="anonymous"></audio>
 </div>
 
 <script>
     const audio = document.getElementById('audio-element');
     const playBtn = document.getElementById('play-btn');
-    const progressContainer = document.getElementById('progress-container');
     const progressBar = document.getElementById('progress-bar');
+    const progressOuter = document.getElementById('progress-outer');
+    const timeDisplay = document.getElementById('current-time');
+    const durationDisplay = document.getElementById('duration');
     const title = document.getElementById('title');
-    const fileInput = document.getElementById('audio-upload');
+    const artist = document.getElementById('artist');
+    const uploadText = document.getElementById('upload-text');
+    const langSelect = document.getElementById('lang-select');
     const playlistElement = document.getElementById('playlist');
     const canvas = document.getElementById('visualizer');
     const ctx = canvas.getContext('2d');
-
+    
     let songs = [];
     let currentIndex = 0;
     let isPlaying = false;
-    let audioContext, analyser, source, dataArray;
+    let audioCtx, analyser, source, dataArray;
 
-    // Inicializar Visualizador
-    function initVisualizer() {
-        if (!audioContext) {
-            audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            source = audioContext.createMediaElementSource(audio);
-            analyser = audioContext.createAnalyser();
-            source.connect(analyser);
-            analyser.connect(audioContext.destination);
-            analyser.fftSize = 128;
-            dataArray = new Uint8Array(analyser.frequencyBinCount);
-            draw();
+    const themes = {
+        es: { color: '#6366f1', accent: '#38bdf8', noSongs: "Sin canciones", prompt: "Carga música para empezar", upload: "Cargar Canciones 📁" },
+        en: { color: '#ec4899', accent: '#fbcfe8', noSongs: "No songs", prompt: "Upload music to start", upload: "Upload Songs 📁" },
+        pt: { color: '#22c55e', accent: '#bbf7d0', noSongs: "Sem músicas", prompt: "Carregue músicas para começar", upload: "Carregar Músicas 📁" },
+        fr: { color: '#eab308', accent: '#fef08a', noSongs: "Pas de chansons", prompt: "Charger de la musique", upload: "Charger des chansons 📁" },
+        ko: { color: '#a855f7', accent: '#e9d5ff', noSongs: "노래 없음", prompt: "음악을 업로드하세요", upload: "노래 업로드 📁" },
+        ja: { color: '#f43f5e', accent: '#fecdd3', noSongs: "曲がありません", prompt: "音楽をアップロード", upload: "曲をアップロード 📁" }
+    };
+
+    function updateTheme() {
+        const theme = themes[langSelect.value];
+        document.documentElement.style.setProperty('--primary', theme.color);
+        document.documentElement.style.setProperty('--accent', theme.accent);
+        document.documentElement.style.setProperty('--glow', `${theme.color}80`);
+        uploadText.innerText = theme.upload;
+        if (songs.length === 0) {
+            title.innerText = theme.noSongs;
+            artist.innerText = theme.prompt;
         }
     }
 
-    function draw() {
-        requestAnimationFrame(draw);
+    langSelect.onchange = updateTheme;
+
+    function formatTime(seconds) {
+        if (isNaN(seconds)) return "0:00";
+        const mins = Math.floor(seconds / 60);
+        const secs = Math.floor(seconds % 60);
+        return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+    }
+
+    function setupAudio() {
+        if (audioCtx) return;
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        analyser = audioCtx.createAnalyser();
+        source = audioCtx.createMediaElementSource(audio);
+        source.connect(analyser);
+        analyser.connect(audioCtx.destination);
+        analyser.fftSize = 128;
+        dataArray = new Uint8Array(analyser.frequencyBinCount);
+        animate();
+    }
+
+    function animate() {
+        requestAnimationFrame(animate);
+        if (canvas.width !== canvas.clientWidth) {
+            canvas.width = canvas.clientWidth; canvas.height = canvas.clientHeight;
+        }
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
         if (!isPlaying) return;
         analyser.getByteFrequencyData(dataArray);
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        const barWidth = (canvas.width / dataArray.length) * 2;
+        const color = themes[langSelect.value].color;
+        const barWidth = (canvas.width / dataArray.length) * 2.5;
         let x = 0;
-        dataArray.forEach(val => {
-            const h = val / 2;
-            ctx.fillStyle = `rgb(99, 102, ${val + 100})`;
-            ctx.fillRect(x, canvas.height - h, barWidth, h);
-            x += barWidth + 1;
-        });
-    }
-
-    // Lógica de Playlist
-    function loadSong(index) {
-        if (songs[index]) {
-            currentIndex = index;
-            const file = songs[index];
-            audio.src = URL.createObjectURL(file);
-            title.innerText = file.name.replace(/\.[^/.]+$/, "");
-            updatePlaylistUI();
-            playSong();
+        for (let i = 0; i < dataArray.length; i++) {
+            const h = (dataArray[i] / 255) * canvas.height;
+            ctx.fillStyle = color;
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = color;
+            ctx.fillRect(x, canvas.height - h, barWidth - 1, h);
+            x += barWidth;
         }
     }
 
-    function updatePlaylistUI() {
-        playlistElement.innerHTML = '';
-        songs.forEach((song, index) => {
-            const div = document.createElement('div');
-            div.className = `playlist-item ${index === currentIndex ? 'active' : ''}`;
-            div.innerText = `${index + 1}. ${song.name.substring(0, 30)}...`;
-            div.onclick = () => loadSong(index);
-            playlistElement.appendChild(div);
-        });
-    }
+    progressOuter.onclick = (e) => {
+        if (!audio.duration) return;
+        audio.currentTime = (e.offsetX / progressOuter.clientWidth) * audio.duration;
+    };
 
-    fileInput.onchange = (e) => {
+    audio.ontimeupdate = () => {
+        const percent = (audio.currentTime / audio.duration) * 100 || 0;
+        progressBar.style.width = `${percent}%`;
+        timeDisplay.innerText = formatTime(audio.currentTime);
+        durationDisplay.innerText = formatTime(audio.duration);
+    };
+
+    document.getElementById('audio-upload').onchange = (e) => {
         const newFiles = Array.from(e.target.files);
         if (newFiles.length > 0) {
+            const isFirst = songs.length === 0;
             songs = [...songs, ...newFiles];
-            updatePlaylistUI();
-            if (!isPlaying && audio.src === "") loadSong(songs.length - newFiles.length);
+            renderPlaylist();
+            if (isFirst) loadSong(0);
         }
     };
 
-    // Controles
-    function playSong() {
-        if (!audio.src) return;
-        initVisualizer();
-        if (audioContext.state === 'suspended') audioContext.resume();
-        audio.play();
-        isPlaying = true;
-        playBtn.innerHTML = '⏸';
+    function loadSong(index) {
+        currentIndex = index;
+        const file = songs[index];
+        audio.src = URL.createObjectURL(file);
+        title.innerText = file.name.replace(/\.[^/.]+$/, "");
+        artist.innerText = "Ready";
+        renderPlaylist();
+        if (isPlaying) audio.play();
     }
 
-    function pauseSong() {
-        audio.pause();
-        isPlaying = false;
-        playBtn.innerHTML = '▶';
+    function renderPlaylist() {
+        playlistElement.innerHTML = '';
+        songs.forEach((song, i) => {
+            const item = document.createElement('div');
+            item.className = `playlist-item ${i === currentIndex ? 'active' : ''}`;
+            item.innerText = `${i + 1}. ${song.name.substring(0, 30)}`;
+            item.onclick = () => loadSong(i);
+            playlistElement.appendChild(item);
+        });
     }
 
-    playBtn.onclick = () => isPlaying ? pauseSong() : playSong();
-    document.getElementById('next-btn').onclick = () => {
-        currentIndex = (currentIndex + 1) % songs.length;
-        loadSong(currentIndex);
-    };
-    document.getElementById('prev-btn').onclick = () => {
-        currentIndex = (currentIndex - 1 + songs.length) % songs.length;
-        loadSong(currentIndex);
+    playBtn.onclick = () => {
+        if (!songs.length) return;
+        setupAudio();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        if (isPlaying) {
+            audio.pause();
+            playBtn.innerHTML = '▶';
+        } else {
+            audio.play();
+            playBtn.innerHTML = '⏸';
+        }
+        isPlaying = !isPlaying;
     };
 
-    // Barra de progreso
-    audio.ontimeupdate = () => {
-        const percent = (audio.currentTime / audio.duration) * 100;
-        progressBar.style.width = `${percent}%`;
-    };
-    progressContainer.onclick = (e) => {
-        const width = progressContainer.clientWidth;
-        audio.currentTime = (e.offsetX / width) * audio.duration;
-    };
+    document.getElementById('next-btn').onclick = () => songs.length && loadSong((currentIndex + 1) % songs.length);
+    document.getElementById('prev-btn').onclick = () => songs.length && loadSong((currentIndex - 1 + songs.length) % songs.length);
     audio.onended = () => document.getElementById('next-btn').click();
 
-    // Resize canvas
-    canvas.width = canvas.offsetWidth;
-    canvas.height = canvas.offsetHeight;
+    updateTheme();
 </script>
-    <a href="https://github.com/hectorpro587/musicplayer.github.io" class="github-btn" target="_blank" title="Ver en GitHub">
-    <i class="fa-brands fa-github"></i>
-</a>
-
 </body>
 </html>
