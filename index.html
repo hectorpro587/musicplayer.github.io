@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MusicPlayer | Playlist & Visualizer</title>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --bg: #0f172a;
+            --card: #1e293b;
+            --text: #f8fafc;
+            --accent: #38bdf8;
+        }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .player-card {
+            background: var(--card);
+            padding: 2rem;
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+            width: 400px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* Visualizador */
+        #visualizer {
+            width: 100%;
+            height: 80px;
+            background-color: #0d121c;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+
+        /* Info de Canción */
+        .info { text-align: center; margin-bottom: 10px; }
+        #title { font-size: 1.1rem; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 300px; }
+        #artist { opacity: 0.6; font-size: 0.85rem; margin: 5px 0; }
+
+        /* Barra de Progreso */
+        .progress-container {
+            background: #334155;
+            height: 6px;
+            width: 100%;
+            border-radius: 10px;
+            margin: 15px 0;
+            cursor: pointer;
+        }
+        .progress-bar {
+            background: var(--primary);
+            height: 100%;
+            width: 0%;
+            border-radius: 10px;
+        }
+
+        /* Controles */
+        .controls { display: flex; align-items: center; gap: 20px; }
+        button {
+            background: none; border: none; color: white;
+            cursor: pointer; font-size: 1.8rem; transition: 0.2s;
+        }
+        button:hover:not(:disabled) { color: var(--primary); transform: scale(1.1); }
+        button:disabled { opacity: 0.3; cursor: default; }
+        #play-btn {
+            background: var(--primary); width: 60px; height: 60px;
+            border-radius: 50%; display: flex; align-items: center; justify-content: center;
+        }
+
+        /* Lista de Reproducción */
+        .playlist-container {
+            width: 100%;
+            max-height: 150px;
+            overflow-y: auto;
+            margin-top: 20px;
+            background: #0f172a;
+            border-radius: 10px;
+            padding: 10px;
+        }
+        .playlist-item {
+            padding: 8px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            border-bottom: 1px solid #1e293b;
+            display: flex;
+            justify-content: space-between;
+        }
+        .playlist-item:hover { background: #1e293b; }
+        .playlist-item.active { color: var(--accent); font-weight: bold; }
+
+        /* Input */
+        .file-input-wrapper { margin-top: 20px; }
+        input[type="file"] { display: none; }
+        .custom-file-upload {
+            padding: 8px 18px; background: #334155;
+            border-radius: 20px; cursor: pointer; font-size: 0.8rem;
+        }
+    </style>
+</head>
+<body>
+
+<div class="player-card">
+    <div class="info">
+        <h2 id="title">Sin canciones</h2>
+        <p id="artist">Carga archivos para empezar</p>
+    </div>
+
+    <canvas id="visualizer"></canvas>
+
+    <div class="progress-container" id="progress-container">
+        <div class="progress-bar" id="progress-bar"></div>
+    </div>
+
+    <div class="controls">
+        <button id="prev-btn">⏮</button>
+        <button id="play-btn">▶</button>
+        <button id="next-btn">⏭</button>
+    </div>
+
+    <div class="playlist-container" id="playlist">
+        </div>
+
+    <div class="file-input-wrapper">
+        <label class="custom-file-upload">
+            <input type="file" id="audio-upload" accept="audio/*" multiple>
+            Cargar Canciones (puedes elegir varias.) 📁
+        </label>
+    </div>
+
+    <audio id="audio-element" crossorigin="anonymous"></audio>
+</div>
+
+<script>
+    const audio = document.getElementById('audio-element');
+    const playBtn = document.getElementById('play-btn');
+    const progressContainer = document.getElementById('progress-container');
+    const progressBar = document.getElementById('progress-bar');
+    const title = document.getElementById('title');
+    const fileInput = document.getElementById('audio-upload');
+    const playlistElement = document.getElementById('playlist');
+    const canvas = document.getElementById('visualizer');
+    const ctx = canvas.getContext('2d');
+
+    let songs = [];
+    let currentIndex = 0;
+    let isPlaying = false;
+    let audioContext, analyser, source, dataArray;
+
+    // Inicializar Visualizador
+    function initVisualizer() {
+        if (!audioContext) {
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            source = audioContext.createMediaElementSource(audio);
+            analyser = audioContext.createAnalyser();
+            source.connect(analyser);
+            analyser.connect(audioContext.destination);
+            analyser.fftSize = 128;
+            dataArray = new Uint8Array(analyser.frequencyBinCount);
+            draw();
+        }
+    }
+
+    function draw() {
+        requestAnimationFrame(draw);
+        if (!isPlaying) return;
+        analyser.getByteFrequencyData(dataArray);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        const barWidth = (canvas.width / dataArray.length) * 2;
+        let x = 0;
+        dataArray.forEach(val => {
+            const h = val / 2;
+            ctx.fillStyle = `rgb(99, 102, ${val + 100})`;
+            ctx.fillRect(x, canvas.height - h, barWidth, h);
+            x += barWidth + 1;
+        });
+    }
+
+    // Lógica de Playlist
+    function loadSong(index) {
+        if (songs[index]) {
+            currentIndex = index;
+            const file = songs[index];
+            audio.src = URL.createObjectURL(file);
+            title.innerText = file.name.replace(/\.[^/.]+$/, "");
+            updatePlaylistUI();
+            playSong();
+        }
+    }
+
+    function updatePlaylistUI() {
+        playlistElement.innerHTML = '';
+        songs.forEach((song, index) => {
+            const div = document.createElement('div');
+            div.className = `playlist-item ${index === currentIndex ? 'active' : ''}`;
+            div.innerText = `${index + 1}. ${song.name.substring(0, 30)}...`;
+            div.onclick = () => loadSong(index);
+            playlistElement.appendChild(div);
+        });
+    }
+
+    fileInput.onchange = (e) => {
+        const newFiles = Array.from(e.target.files);
+        if (newFiles.length > 0) {
+            songs = [...songs, ...newFiles];
+            updatePlaylistUI();
+            if (!isPlaying && audio.src === "") loadSong(songs.length - newFiles.length);
+        }
+    };
+
+    // Controles
+    function playSong() {
+        if (!audio.src) return;
+        initVisualizer();
+        if (audioContext.state === 'suspended') audioContext.resume();
+        audio.play();
+        isPlaying = true;
+        playBtn.innerHTML = '⏸';
+    }
+
+    function pauseSong() {
+        audio.pause();
+        isPlaying = false;
+        playBtn.innerHTML = '▶';
+    }
+
+    playBtn.onclick = () => isPlaying ? pauseSong() : playSong();
+    document.getElementById('next-btn').onclick = () => {
+        currentIndex = (currentIndex + 1) % songs.length;
+        loadSong(currentIndex);
+    };
+    document.getElementById('prev-btn').onclick = () => {
+        currentIndex = (currentIndex - 1 + songs.length) % songs.length;
+        loadSong(currentIndex);
+    };
+
+    // Barra de progreso
+    audio.ontimeupdate = () => {
+        const percent = (audio.currentTime / audio.duration) * 100;
+        progressBar.style.width = `${percent}%`;
+    };
+    progressContainer.onclick = (e) => {
+        const width = progressContainer.clientWidth;
+        audio.currentTime = (e.offsetX / width) * audio.duration;
+    };
+    audio.onended = () => document.getElementById('next-btn').click();
+
+    // Resize canvas
+    canvas.width = canvas.offsetWidth;
+    canvas.height = canvas.offsetHeight;
+</script>
+    <a href="https://github.com/hectorpro587/musicplayer.github.io" class="github-btn" target="_blank" title="Ver en GitHub">
+    <i class="fa-brands fa-github"></i>
+</a>
+
+</body>
+</html>
