@@ -6,6 +6,40 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MusicPlayer | Reproductor de musica</title>
     <style>
+    .news-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    background: rgba(15, 23, 42, 0.9);
+    border-bottom: 1px solid var(--primary);
+    padding: 10px 0;
+    overflow: hidden;
+    z-index: 1000;
+    backdrop-filter: blur(5px);
+}
+
+.news-content {
+    display: inline-block;
+    white-space: nowrap;
+    padding-left: 100%;
+    animation: marquee 20s linear infinite;
+    color: var(--accent);
+    font-size: 0.9rem;
+    font-weight: 500;
+    text-shadow: 0 0 8px var(--glow);
+}
+
+@keyframes marquee {
+    0% { transform: translate(0, 0); }
+    100% { transform: translate(-100%, 0); }
+}
+
+/* Ajuste para el body para que no se solape */
+body {
+    padding-top: 40px; 
+}
+
         :root {
             --primary: #6366f1;
             --bg: #0f172a;
@@ -146,6 +180,13 @@
     </style>
 </head>
 <body>
+    <script src="https://keepandroidopen.org/banner.js?link=https://example.com/android&hidebutton=off"></script>
+    <div class="news-bar">
+    <div class="news-content" id="news-text">
+         texto de prueba...
+    </div>
+</div>
+
 
 <div class="player-card">
     <div class="lang-container">
@@ -345,6 +386,7 @@
     audio.onended = () => document.getElementById('next-btn').click();
 
     updateTheme();
+    
 </script>
 </body>
 </html>
